@@ -1,0 +1,57 @@
+name: native-engine CI
+
+on:
+  push:
+    branches: [ci]
+  workflow_dispatch:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-14]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Deps (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y cmake libsndfile1-dev
+      - name: Deps (macOS)
+        if: runner.os == 'macOS'
+        run: brew install libsndfile
+      - name: Build
+        run: |
+          cmake -S ggml -B ggml/build -DCMAKE_BUILD_TYPE=Release
+          cmake --build ggml/build -j4
+      - name: Assets
+        run: cmake --build ggml/build --target regression-assets bench-assets
+      - name: ctest (engine=auto)
+        run: ctest --test-dir ggml/build --output-on-failure -V 2>&1 | grep -E "engine=|max abs|Test +#|tests passed" || true
+      - name: ctest (engine=native, forced)
+        run: LOCALVQE_ENGINE=native ctest --test-dir ggml/build -R "v1.2|v1.3|fuzz" --output-on-failure -V 2>&1 | grep -E "engine=|native:|max abs|Test +#|tests passed"
+      - name: ctest (engine=graph)
+        run: LOCALVQE_ENGINE=graph ctest --test-dir ggml/build -R "v1.2|v1.3|fuzz" --output-on-failure
+      - name: Bench
+        run: |
+          cd ggml/build
+          A=bench_assets
+          for m in v1.2-1.3M v1.3-4.8M; do for e in graph native; do for t in 1 4; do
+            printf "%-10s %-6s t=%s  " $m $e $t
+            LOCALVQE_ENGINE=$e GGML_NTHREADS=$t ./bench $A/localvqe-$m-f32.gguf --backend CPU --device 0 \
+              --in-wav $A/dt_mic.wav $A/dt_ref.wav --iters 10 2>&1 | grep -E "^Per-hop|engine=" | tr '\n' ' '
+            echo
+          done; done; done
+
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 4.0.23
+      - run: bash web/build-wasm.sh
