@@ -331,7 +331,13 @@ static localvqe_ctx_t make_ctx(const char* model_path,
                     pref.c_str());
             pref.clear();
         }
+        // auto = native only where its fast kernels are measured (NEON);
+        // elsewhere the engine is opt-in via "native".
+#if defined(__ARM_NEON)
         const bool want_native = (pref != "graph");
+#else
+        const bool want_native = (pref == "native");
+#endif
         const bool cpu_backend = (std::string(backend_name) == "CPU");
         if (want_native && cpu_backend && !ctx->daf.loaded &&
             native_engine_supported(ctx->graph_model.hparams)) {

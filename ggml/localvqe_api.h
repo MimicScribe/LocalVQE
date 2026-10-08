@@ -128,8 +128,9 @@ LOCALVQE_API int localvqe_options_set_threads(localvqe_options_t opts,
  * Construct a context from a populated options handle. model_path must
  * have been set. Returns an opaque ctx handle, or 0 on failure.
  */
-/// Inference engine: "auto" (default: the hand-written native engine when it
-/// implements the model, else the ggml graph), "graph", or "native". The env
+/// Inference engine: "auto" (default: on ARM/NEON, the hand-written native
+/// engine when it implements the model, else the ggml graph; elsewhere the
+/// graph), "graph", or "native". The env
 /// var LOCALVQE_ENGINE=graph|native applies when the option is unset.
 LOCALVQE_API int localvqe_options_set_engine(localvqe_options_t opts,
                                              const char* engine);
