@@ -720,8 +720,11 @@ bool ne_init(native_engine& ne, const localvqe_model& m) {
         d.dec_n.b = W(m, p + ".deconv.norm.bias");
         const size_t nb = W(m, p + ".deconv.conv.bias").size();
         const int C_next = (int)(nb / 2);
-        // skip: dec i consumes encoder output mic_e(5-i), which must have Cd channels.
-        const ne_conv& skip_src = ne.enc[6 - i].c1;
+        // skip: dec i consumes mic encoder output mic_e(5-i), which must have Cd
+        // channels. enc[] interleaves the far stack (mic1,2 far1,2 mic3,4,5), so
+        // mic_e2/mic_e1 are enc[1]/enc[0], not enc[3]/enc[2].
+        static const int skip_enc[5] = {6, 5, 4, 1, 0};
+        const ne_conv& skip_src = ne.enc[skip_enc[i]].c1;
         if (skip_src.C_out != Cd || skip_src.F_out != Fd ||
             !norm_ok(d.skip_n, Cd) || !norm_ok(d.res_n, Cd) || !norm_ok(d.dec_n, Cd) ||
             d.skip_w.size() != (size_t)Cd * Cd || d.skip_b.size() != (size_t)Cd ||

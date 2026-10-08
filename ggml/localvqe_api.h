@@ -136,7 +136,7 @@ LOCALVQE_API int localvqe_options_set_engine(localvqe_options_t opts,
 
 LOCALVQE_API localvqe_ctx_t localvqe_new_with_options(localvqe_options_t opts);
 
-/// Which engine this context runs: "native", "graph" or "daf" (front-end-only build).
+/// Which engine this context runs: "native", "graph", "daf" (front-end-only build) or "gtcrn".
 LOCALVQE_API const char* localvqe_engine_name(localvqe_ctx_t ctx);
 
 /**
