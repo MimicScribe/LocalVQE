@@ -10,8 +10,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-14]
+        include:
+          - { os: ubuntu-24.04,     mt: 4 }
+          - { os: ubuntu-24.04-arm, mt: 4 }
+          - { os: macos-14,         mt: 3 }   # 3 vCPUs: 4 graph threads stall on the barrier
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,8 +41,9 @@ jobs:
       - name: Bench
         run: |
           cd ggml/build
-          A=bench_assets
-          for m in v1.2-1.3M v1.3-4.8M; do for e in graph native; do for t in 1 4; do
+          [ -x ./bench ] || cd bin   # Linux x86 builds put binaries in build/bin
+          A=$GITHUB_WORKSPACE/ggml/build/bench_assets
+          for m in v1.2-1.3M v1.3-4.8M; do for e in graph native; do for t in 1 ${{ matrix.mt }}; do
             printf "%-10s %-6s t=%s  " $m $e $t
             LOCALVQE_ENGINE=$e GGML_NTHREADS=$t ./bench $A/localvqe-$m-f32.gguf --backend CPU --device 0 \
               --in-wav $A/dt_mic.wav $A/dt_ref.wav --iters 10 2>&1 | grep -E "^Per-hop|engine=" | tr '\n' ' '
